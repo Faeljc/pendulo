@@ -4,82 +4,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>MetricsGraphics - Dados em Tempo Real</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <link rel="stylesheet" href="./uPlot-master/dist/uPlot.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/metrics-graphics/dist/metricsgraphics.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css" integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 
 <body>
-    <h1>Dados do Pêndulo</h1>
-
-    <input id="msg" hidden /><button id="send" class="btn btn-success ms-5">Iniciar</button>
-
-    <div class="px-5" style="
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    overflow-x: auto;">
-        <div id="chart"></div>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <!-- <img src="./image/graf.png" alt="" width="30" height="24" class="d-inline-block align-text-top"> -->
+                Dados do Pêndulo
+            </a>
+        </div>
+    </nav>
+    <div class="row p-3 d-flex align-items-end">
+        <div class=" col-3 px-0">
+            <label for="graus" style="font-weight: 600;"><i class="fa-brands fa-usb"></i> Porta Serial</label>
+            <select class="form-select" aria-label="Default select example">
+                <option selected>Selecione a porta</option>
+                <option value="COM1">COM1</option>
+                <option value="COM3">COM3</option>
+                <option value="COM8">COM8</option>
+                <option value="COM9">COM9</option>
+              </select>
+        </div>
+        <div class="col">
+            <input id="msg" hidden /><button id="send" class="btn btn-success"><i class="fa fa-play" aria-hidden="true"></i> Iniciar</button> <button
+            class="btn btn-danger"><i class="fa-solid fa-arrows-rotate"></i> Reiniciar</button>
+        </div>
     </div>
 
-    <div id="output"></div>
-
+    <div class="row" style="background: #dedad6; padding: 20px;">
+        <div class="col-9" style="background: #fff;">
+            <div id="chart" class="mg-line-chart" style="width: 800px; height: 400px; margin: auto;"></div>
+        </div>
+        <div class="col ms-2" style="width: 200px; height: 400px; overflow-y: scroll; background: #fff;">
+            <div id="output"></div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="p-3 col-3">
+            <label for="graus" style="font-weight: 600;">Graus</label>
+            <input type="text" id="graus" class="form-control">
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <!-- Luxon (para lidar com datas) -->
-    <script src="https://cdn.jsdelivr.net/npm/luxon"></script>
-
-    <!-- Adapter para Luxon e Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/uplot@latest/dist/uPlot.iife.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/d3/dist/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/metrics-graphics/dist/metricsgraphics.min.js"></script>
     <script>
-        //Gráfico
-        const opts = {
-            title: "Dados em Tempo Real",
-            width: 800,
-            height: 600,
-            scales: { x: { time: true }, y: { 
-                range: [-100,100],
-                auto: true } },
-            series: [
-                {}, // Eixo X
-                { stroke: "rgb(75, 192, 192)", width: 2 } // Eixo Y
-            ],
-        };
+        // Inicializa os dados do gráfico
+        let chartData = []; // [{ date: Date, value: number }]
 
-        const data = [[], []]; // Inicialmente vazio: [timestamps, valores]
-        const chart = new uPlot(opts, data, document.getElementById("chart"));
+        // Adiciona espaço no eixo X
+        let minX = new Date(); // Define o início do intervalo (exemplo: agora)
+        let maxX = new Date(minX.getTime() + 60 * 1000);
 
-        // Função para atualizar o gráfico
-        function updateChart(timestamp, value) {
-            // Adiciona os novos dados
-            data[0].push(timestamp); // Eixo X (tempo)
-            data[1].push(value);     // Eixo Y (valor)
-
-            // Remove pontos antigos (exemplo: mantém últimos 20 pontos)
-            if (data[0].length > 20) {
-                data[0].shift();
-                data[1].shift();
-            }
-
-            // Atualiza o gráfico
-            chart.setData(data);
+        // Função para renderizar o gráfico
+        function renderChart(data) {
+            MG.data_graphic({
+                title: "Gráfico em Tempo Real",
+                description: "Atualizado em tempo real via WebSocket",
+                data: data,
+                full_width: true,
+                height: 400,
+                target: "#chart",
+                x_accessor: "date",
+                y_accessor: "value",
+                min_x: minX, // Define o limite inferior do eixo X
+                max_x: maxX, // Define o limite superior do eixo X
+                min_y: -50,
+                max_y: 50,
+                show_tooltips: true,
+                animate_on_load: true,
+            });
         }
 
+        // Inicializa o gráfico vazio
+        renderChart(chartData);
+
+        // WebSocket para receber dados
         const ws = new WebSocket("ws://localhost:3000");
 
         const output = document.getElementById("output");
-
         const send = document.getElementById("send");
+        const grausInput = document.getElementById("graus")
 
         send.addEventListener("click", () => {
             const msg = document.getElementById("msg").value;
@@ -92,16 +106,21 @@
         }
 
         ws.onmessage = function (e) {
-            // dados.push(e.data)
             output.innerHTML += log("Received", e.data);
 
             const receivedData = JSON.parse(e.data);
-            const timestamp = new Date(receivedData.timestamp).getTime() / 1000; // Converter para UNIX time
+            const timestamp = new Date(receivedData.timestamp);
             const value = parseFloat(receivedData.value);
 
-            updateChart(timestamp, value);
-        };
+            // Adiciona novos dados ao gráfico
+            chartData.push({ date: timestamp, value: value });
 
+            // Atualiza min_x e max_x para manter 60 segundos de intervalo
+            minX = new Date(chartData[0].date.getTime() - 10 * 1000); // 10 segundos antes do primeiro ponto
+            maxX = new Date(chartData[chartData.length - 1].date.getTime() + 10 * 1000); // 10 segundos depois do último ponto
+            grausInput.value = value
+            renderChart(chartData);
+        };
 
         ws.onclose = function (e) {
             output.innerHTML += log("Disconnected", e.code);
@@ -110,7 +129,6 @@
         ws.onerror = function (e) {
             output.innerHTML += log("Error", e.data);
         };
-
     </script>
 </body>
 
