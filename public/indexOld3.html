@@ -4,19 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ECharts - Confidence Band</title>
+    <title>MetricsGraphics - Dados em Tempo Real</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/metrics-graphics/dist/metricsgraphics.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.1/css/all.min.css"
         integrity="sha512-5Hs3dF2AEPkpNAR7UiOHba+lRSJNeM2ECkwxUIxC1Q/FLycGTbNapWXB4tP889k5T5Ju8fs4b1P5z/iB4nMfSQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
 </head>
 
 <body>
     <nav class="navbar navbar-dark bg-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">
+                <!-- <img src="./image/graf.png" alt="" width="30" height="24" class="d-inline-block align-text-top"> -->
                 Dados do Pêndulo
             </a>
         </div>
@@ -41,13 +42,14 @@
 
     <div class="row" style="background: #dedad6; padding: 20px;">
         <div class="col-9" style="background: #fff;">
-            <div id="chart" style="width: 800px; height: 400px; margin: auto;"></div>
+            <div id="chart" class="mg-line-chart" style="width: 800px; height: 400px; margin: auto;"></div>
         </div>
         <div class="col ms-2" style="width: 200px; height: 400px; overflow-y: scroll; background: #2C3034;">
             <div class="py-2"><button class="btn btn-success btn-sm" id="csv" disabled><i
                         class="fa-solid fa-download"></i>
                     Baixar</button></div>
             <div id="output">
+
                 <table class="table table-dark table-striped">
                     <thead>
                         <tr>
@@ -68,65 +70,57 @@
             <input type="text" id="graus" class="form-control">
         </div>
     </div>
+    <script src="https://code.jquery.com/jquery-3.7.1.js"
+        integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+        crossorigin="anonymous"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/d3/dist/d3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/metrics-graphics/dist/metricsgraphics.min.js"></script>
     <script>
-        let chartData = []; // Dados do gráfico
-        let isPaused = false;
-        const pauseButton = document.getElementById("pause");
-        const chart = echarts.init(document.getElementById("chart"));
+        // Inicializa os dados do gráfico
+        let chartData = []; // [{ date: Date, value: number }]
+        let minX = new Date(); // Define o início do intervalo
+        let maxX = new Date(minX.getTime() + 60 * 1000);
+        let isPaused = false; // Estado de pausa
 
+        // Referência ao botão de pausa
+        const pauseButton = document.getElementById("pause");
+
+        // Alterna entre pausar e continuar
         pauseButton.addEventListener("click", () => {
             isPaused = !isPaused;
             pauseButton.textContent = isPaused ? "Continuar" : "Pausar";
         });
 
-        function updateChart(data) {
-            const timestamps = data.map(d => d.date);
-            const values = data.map(d => d.value);
-            const upper = values.map(v => v + 5); // Faixa superior
-            const lower = values.map(v => v - 5); // Faixa inferior
-
-            const option = {
-                title: {
-                    text: 'Gráfico com Confidence Band',
-                },
-                tooltip: {
-                    trigger: 'axis',
-                },
-                xAxis: {
-                    type: 'category',
-                    data: timestamps,
-                },
-                yAxis: {
-                    type: 'value',
-                    min: -50,
-                    max: 50,
-                },
-                series: [
-                    {
-                        name: 'Valor',
-                        type: 'line',
-                        data: values,
-                        smooth: 0.4, // Define suavização intermediária (0 a 1)
-                        lineStyle: { color: '#5470C6' },
-                    },
-                    // {
-                    //     name: 'Faixa Superior',
-                    //     type: 'line',
-                    //     data: upper,
-                    //     lineStyle: { type: 'dashed', color: '#EE6666' },
-                    // },
-                    // {
-                    //     name: 'Faixa Inferior',
-                    //     type: 'line',
-                    //     data: lower,
-                    //     lineStyle: { type: 'dashed', color: '#91CC75' },
-                    // },
-                ],
-            };
-
-            chart.setOption(option);
+        // Função para renderizar o gráfico
+        function renderChart(data) {
+            if (!data || data.length === 0) {
+                console.error("Nenhum dado disponível para o gráfico.");
+                return; // Não tenta renderizar o gráfico se os dados estiverem vazios
+            }
+            MG.data_graphic({
+                title: "Gráfico em Tempo Real",
+                description: "Atualizado em tempo real via WebSocket",
+                data: data,
+                full_width: true,
+                width: 600,
+                height: 400,
+                target: "#chart",
+                x_accessor: "date",
+                y_accessor: "value",
+                min_x: minX, // Define o limite inferior do eixo X
+                max_x: maxX, // Define o limite superior do eixo X
+                min_y: -50,
+                max_y: 50,
+                show_tooltips: true,
+                animate_on_load: true,
+            });
         }
+
+        // Inicializa o gráfico vazio
+        renderChart(chartData);
 
         // WebSocket para receber dados
         const ws = new WebSocket("ws://localhost:3000");
@@ -143,7 +137,7 @@
 
         refresh.addEventListener("click", () => {
             chartData = [];
-            updateChart(chartData);
+            renderChart(chartData);
             const rowTable = document.getElementById("rowTable");
             rowTable.innerHTML = "";
         });
@@ -192,34 +186,40 @@
         }
 
         ws.onmessage = function (e) {
+            // Ignorar mensagens se estiver pausado
             if (isPaused) return;
 
             const receivedData = JSON.parse(e.data);
-            if (receivedData.status === "erro") {
+            if (receivedData.status == "erro") {
                 alert(receivedData.msg);
-                return;
+            } else {
+                const rowTable = document.getElementById("rowTable");
+                const index = rowTable.querySelectorAll("tr").length + 1;
+                rowTable.insertAdjacentHTML(
+                    "beforeend",
+                    log(index, receivedData.value, receivedData.timestamp)
+                );
+
+                const timestamp = new Date(receivedData.timestamp);
+                const value = parseFloat(receivedData.value);
+
+                // Adiciona novos dados ao gráfico
+                chartData.push({ "value": value, "date": timestamp });
+
+                // Atualiza min_x e max_x para manter 60 segundos de intervalo
+                minX = new Date(chartData[0].date.getTime() - 10 * 1000); // 10 segundos antes do primeiro ponto
+                maxX = new Date(chartData[chartData.length - 1].date.getTime() + 10 * 1000); // 10 segundos depois do último ponto
+                grausInput.value = value;
+                renderChart(chartData);
             }
-
-            const rowTable = document.getElementById("rowTable");
-            const index = rowTable.querySelectorAll("tr").length + 1;
-            rowTable.insertAdjacentHTML(
-                "beforeend",
-                log(index, receivedData.value, receivedData.timestamp)
-            );
-
-            const timestamp = new Date(receivedData.timestamp).toLocaleTimeString();
-            const value = parseFloat(receivedData.value);
-
-            chartData.push({ date: timestamp, value });
-            if (chartData.length > 50) chartData.shift(); // Limitar a 50 pontos
-            grausInput.value = value;
-            updateChart(chartData);
         };
+
         ws.onclose = function (e) {
             output.innerHTML += log("Disconnected", e.code);
         };
+
         ws.onerror = function (e) {
-            console.error("WebSocket error:", e);
+            output.innerHTML += log("Error", e.data);
         };
     </script>
 </body>
