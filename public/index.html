@@ -42,6 +42,7 @@
     <div class="row" style="background: #dedad6; padding: 20px;">
         <div class="col-9" style="background: #fff;">
             <div id="chart" style="width: 800px; height: 400px; margin: auto;"></div>
+            <button id="screenshot-button" class="btn btn-sm btn-outline-secondary mb-2">📸 Screenshot</button>
         </div>
         <div class="col ms-2" style="width: 200px; height: 400px; overflow-y: scroll; background: #2C3034;">
             <div class="py-2"><button class="btn btn-success btn-sm" id="csv" disabled><i
@@ -126,7 +127,22 @@
             };
 
             chart.setOption(option);
+
         }
+        // Adiciona funcionalidade ao botão Screenshot
+        document.getElementById('screenshot-button').addEventListener('click', () => {
+            const dataURL = chart.getDataURL({
+                type: 'png', // Tipo da imagem: png, jpeg, etc.
+                pixelRatio: 2, // Qualidade da imagem
+                backgroundColor: '#fff' // Fundo branco
+            });
+
+            // Cria um link temporário para download
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = 'grafico_screenshot.png'; // Nome do arquivo
+            link.click();
+        });
 
         // WebSocket para receber dados
         const ws = new WebSocket("ws://localhost:3000");
@@ -211,7 +227,7 @@
             const value = parseFloat(receivedData.value);
 
             chartData.push({ date: timestamp, value });
-            if (chartData.length > 50) chartData.shift(); // Limitar a 50 pontos
+            if (chartData.length > 100) chartData.shift(); // Limitar a 50 pontos
             grausInput.value = value;
             updateChart(chartData);
         };
