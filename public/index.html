@@ -27,15 +27,27 @@
             <select class="form-select" aria-label="Default select example" id="port">
                 <option selected>Selecione a porta</option>
                 <option value="COM1">COM1</option>
+                <option value="COM2">COM2</option>
                 <option value="COM3">COM3</option>
+                <option value="COM4">COM4</option>
+                <option value="COM5">COM5</option>
+                <option value="COM6">COM6</option>
+                <option value="COM7">COM7</option>
                 <option value="COM8">COM8</option>
                 <option value="COM9">COM9</option>
+                <option value="COM10">COM10</option>
             </select>
         </div>
-        <div class="col">
+        <div class="col-4">
             <button id="send" class="btn btn-success"><i class="fa fa-play" aria-hidden="true"></i> Iniciar</button>
             <button id="pause" class="btn btn-warning">Pausar</button>
             <button class="btn btn-danger" id="refresh"><i class="fa-solid fa-arrows-rotate"></i> Reiniciar</button>
+        </div>
+        <div class="col-4" style="font-weight: 600;">
+            SAÍDA:
+            <div id="angle"
+            style="font-size: x-large; font-weight: 700; background: #2C3034; color: #fff; width: 60px !important; border-radius: 5px; padding-right: 2px;">
+        </div>
         </div>
     </div>
 
@@ -45,9 +57,10 @@
             <button id="screenshot-button" class="btn btn-sm btn-outline-secondary mb-2">📸 Screenshot</button>
         </div>
         <div class="col ms-2" style="width: 200px; height: 400px; overflow-y: scroll; background: #2C3034;">
-            <div class="py-2"><button class="btn btn-success btn-sm" id="csv" disabled><i
+            <div class="py-2"><button class="btn btn-success btn-sm" id="csv" disabled hidden><i
                         class="fa-solid fa-download"></i>
-                    Baixar</button></div>
+                    Baixar</button> <button id="copy-table-button" class="btn btn-primary btn-sm ">📋 Copiar
+                    Tabela</button></div>
             <div id="output">
                 <table class="table table-dark table-striped">
                     <thead>
@@ -89,7 +102,7 @@
 
             const option = {
                 title: {
-                    text: 'Gráfico com Confidence Band',
+                    text: 'Gráfico em movimento',
                 },
                 tooltip: {
                     trigger: 'axis',
@@ -150,6 +163,7 @@
         const send = document.getElementById("send");
         const grausInput = document.getElementById("graus");
         const refresh = document.getElementById("refresh");
+        const angle = document.getElementById("angle")
 
         send.addEventListener("click", () => {
             const port = document.getElementById("port").value;
@@ -201,7 +215,7 @@
 
         function log(index, valor, data) {
             return `<tr>
-                        <th scope="row">${index}</th>
+                        <td scope="row">${index}</td>
                         <td>${data}</td>
                         <td>${valor}</td>
                     </tr>`;
@@ -229,8 +243,39 @@
             chartData.push({ date: timestamp, value });
             if (chartData.length > 100) chartData.shift(); // Limitar a 50 pontos
             grausInput.value = value;
+            angle.innerText = `${value}`
             updateChart(chartData);
         };
+
+        document.getElementById('copy-table-button').addEventListener('click', function () {
+            const table = document.querySelector('#output table');
+            let tableText = '';
+
+            // Adiciona os cabeçalhos da tabela
+            const headers = table.querySelectorAll('thead th');
+            headers.forEach(header => {
+                tableText += header.innerText + '\t';
+            });
+            tableText = tableText.trim() + '\n';
+
+            // Adiciona os dados das linhas
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                cells.forEach(cell => {
+                    tableText += cell.innerText + '\t';
+                });
+                tableText = tableText.trim() + '\n';
+            });
+
+            // Copia para a área de transferência
+            navigator.clipboard.writeText(tableText).then(() => {
+                alert('Tabela copiada para a área de transferência!');
+            }).catch(err => {
+                console.error('Erro ao copiar a tabela:', err);
+            });
+        });
+
         ws.onclose = function (e) {
             output.innerHTML += log("Disconnected", e.code);
         };
