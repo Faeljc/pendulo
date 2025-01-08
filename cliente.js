@@ -8,5 +8,5 @@ const server = http.createServer((req, res) => {
 })
 
 server.listen(8080, () => {
-    console.log('servidot rodando: na porta: 8080')
+    console.log(`servidor rodando: http://localhost:8080`)
 })
